@@ -1,4 +1,5 @@
 const Group = require("../db/models/index").group;
+const GroupRepo  =require("../repositories/groupRepo");
 const Joi = require("joi");
 
 const validateInput = (req) => {
@@ -10,58 +11,37 @@ const validateInput = (req) => {
   return result;
 };
 
-const findGroup = async (code, res) => {
-  try {
-    const group = await Group.findAll({
-      where: {
-        code,
-      },
-    });
-
-    if (group.length === 0) {
-      res.status(200).json({
-        status: 23,
-        desc: "empty data",
-        message: `Search with '${code}' key is not found.`,
-      });
-      return;
-    }
-    return group;
-  } catch (error) {
-    res.status(500).json({
-      status: 99,
-      desc: "server error",
-      message: error,
-    });
-  }
-};
-
 module.exports = {
+
   /**
    * Show all user groups
    * @method GET /api/v1/groups
-   * @param {object} req
-   * @param {object} res
    */
-  async allGroups(req, res) {
-    const groups = await Group.findAll();
-    res.status(200).json({
-      status: 1,
-      desc: "request success",
-      message: "groups successfully returned",
-      data: groups,
-    });
-    return;
+  allGroups(req, res) {
+    GroupRepo.show()
+      .then(response => {
+        res.status(200).json({
+          status: 1,
+          desc: "request success",
+          message: "groups successfully returned",
+          data: response,
+        });
+      })
+      .catch(e => {
+        res.status(500).json({
+          status: 99,
+          desc: "server error",
+          message: e
+        });
+      });
   },
 
   /**
    * Add user group
    * @method POST /api/v1/groups
-   * @param {object} req
-   * @param {object} res
    */
   async addGroup(req, res) {
-    const validate = validateInput(req.body);
+    const validate = await validateInput(req.body);
     if (validate.error) {
       res.status(400).json({
         err_status: 5,
@@ -70,43 +50,59 @@ module.exports = {
       });
       return;
     }
-    const insertGroup = await Group.create(
-      {
-        code: req.body.code,
-        name: req.body.name,
-      },
-      { silent: true }
-    );
-    res.status(201).json({
-      status: 1,
-      desc: "request success",
-      message: "group successfully added",
-      data: insertGroup,
-    });
+
+    GroupRepo.store(req.body)
+      .then(response => {
+        res.status(201).json({
+          status: 1,
+          desc: "request success",
+          message: "group successfully added",
+          data: response,
+        });  
+      })
+      .catch(e => {
+        res.status(500).json({
+          status: 99,
+          desc: "server error",
+          message: e
+        });
+      });    
   },
 
   /**
    * Get specific group
    * @method GET /api/v1/groups
-   * @param {object} req
-   * @param {object} res
    */
-  async getGroup(req, res) {
-    const group = await findGroup(req.params.code, res);
-
-    res.status(200).json({
-      status: 1,
-      desc: "request success",
-      message: "group return successfully",
-      data: group,
-    });
+  getGroup(req, res) {
+    GroupRepo.find(req.params.code, res)
+      .then(response => {
+        if (group.length === 0) {
+          res.status(200).json({
+            status: 23,
+            desc: "empty data",
+            message: `Search with '${req.params.code}' key is not found.`,
+          });
+        } else {
+          res.status(200).json({
+            status: 1,
+            desc: "request success",
+            message: "group return successfully",
+            data: response,
+          });
+        }
+      })
+      .catch(e => {
+        res.status(500).json({
+          status: 99,
+          desc: "server error",
+          message: e,
+        });
+      })
   },
 
   /**
    * Update a group
    * @method PUT /api/v1/groups
-   * @param {object} req
-   * @param {object} res
    */
   async updateGroup(req, res) {
     const { code, name } = req.body;
@@ -121,32 +117,36 @@ module.exports = {
       return;
     }
 
-    await findGroup(code, res);
+    GroupRepo.find(code)
+      .then(response => {
+        if (response.length === 0) {
+          res.status(200).json({
+            status: 23,
+            desc: "empty data",
+            message: `Search with '${code}' key is not found.`,
+          });
+          return;
 
-    try {
-      await Group.update(
-        {
-          code,
-          name,
-        },
-        {
-          where: {
-            code,
-          },
+        } else {
+          GroupRepo.update(code, name)
+            .then(response => {
+              res.status(200).json({
+                status: 1,
+                desc: "request success",
+                message: "group successfully updated",
+                data: req.body,
+              });
+              return;
+            });
         }
-      );
-      res.status(200).json({
-        status: 1,
-        desc: "request success",
-        message: "group successfully updated",
-        data: req.body,
+      })
+      .catch(e => {
+        res.status(500).json({
+          err_status: 99,
+          err_desc: "system error",
+          err_message: e,
+        });
+        return;
       });
-    } catch (error) {
-      res.status(500).json({
-        err_status: 99,
-        err_desc: "system error",
-        err_message: error,
-      });
-    }
   },
 };
