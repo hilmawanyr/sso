@@ -1,4 +1,3 @@
-const Group = require("../db/models/index").group;
 const GroupRepo  =require("../repositories/groupRepo");
 const Joi = require("joi");
 
