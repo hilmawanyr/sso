@@ -104,9 +104,8 @@ module.exports = {
    * Update a group
    * @method PUT /api/v1/groups
    */
-  async updateGroup(req, res) {
+  updateGroup(req, res) {
     const { code, name } = req.body;
-
     const validate = validateInput(req.body);
     if (validate.error) {
       res.status(400).json({
